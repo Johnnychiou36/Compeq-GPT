@@ -14,7 +14,7 @@ client = OpenAI(api_key=api_key)
 
 # === 頁面設定 ===
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
-st.title("💬 Compeq GPT（對話式 UI）")
+st.title("Compeq GPT(你的好助手)")
 
 # === 聊天紀錄保存 ===
 if "chat_history" not in st.session_state:
