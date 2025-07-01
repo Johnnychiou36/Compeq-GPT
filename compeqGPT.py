@@ -59,20 +59,28 @@ if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
         if file_content and "preview" in file_content:
             st.image(file_content["preview"], caption="上傳圖片")
 
-    # 建立 messages 結構
+    # === 建立 GPT messages 上下文 ===
     messages = []
+
+    # 加入過去對話（最多最近 5 筆避免 token 超限）
+    for item in st.session_state.chat_history[-5:]:
+        messages.append({"role": "user", "content": item["提問"]})
+        messages.append({"role": "assistant", "content": item["回覆"]})
+
+    # 加入當前提問與檔案
     if file_content and file_content["type"] == "image":
-        messages = [
-            {"role": "user", "content": [
+        messages.append({
+            "role": "user",
+            "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {
                     "url": "data:image/png;base64," + base64.b64encode(file_content["bytes"]).decode()}}
-            ]}
-        ]
+            ]
+        })
+    elif file_content and file_content["type"] == "text":
+        messages.append({"role": "user", "content": f"{prompt}\n\n以下是檔案內容：\n{file_content['text']}"})
     else:
-        messages = [{"role": "user", "content": prompt}]
-        if file_content and file_content["type"] == "text":
-            messages.append({"role": "user", "content": f"以下是檔案內容：\n{file_content['text']}"})
+        messages.append({"role": "user", "content": prompt})
 
     # GPT 回應
     with st.spinner("思考中..."):
@@ -87,7 +95,7 @@ if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
     with st.chat_message("assistant"):
         st.markdown(reply)
 
-    # 存入紀錄
+    # 存入聊天紀錄
     st.session_state.chat_history.append({"提問": prompt, "回覆": reply})
 
 # === 歷史下載工具 ===
@@ -115,7 +123,7 @@ def create_excel_file(history):
     output.seek(0)
     return output
 
-# === 歷史區 ===
+# === 側邊欄下載與歷史 ===
 if st.sidebar.button("下載聊天紀錄") and st.session_state.chat_history:
     reply_all = "\n\n".join([f"你：{x['提問']}\nGPT：{x['回覆']}" for x in st.session_state.chat_history])
     st.sidebar.download_button("TXT 檔", create_txt_file(reply_all), file_name="response.txt")
