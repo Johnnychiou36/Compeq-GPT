@@ -20,9 +20,6 @@ st.title("💬 Compeq GPT（對話式 UI）")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# === 上傳檔案 ===
-uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
-
 # === 檔案處理 ===
 def extract_file_content(file):
     file_type = file.type
@@ -37,65 +34,70 @@ def extract_file_content(file):
         doc = fitz.open(stream=file.read(), filetype="pdf")
         for page in doc:
             text += page.get_text()
-        return {"type": "text", "text": text.strip()}
+        return {"type": "text", "text": text.strip()[:1500]}  # 限制 PDF 長度
     elif file_type == "text/plain":
-        return {"type": "text", "text": file.read().decode("utf-8")}
+        return {"type": "text", "text": file.read().decode("utf-8")[:1500]}  # 限制 TXT 長度
     elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         doc = docx.Document(file)
         text = "\n".join([para.text for para in doc.paragraphs])
-        return {"type": "text", "text": text.strip()}
+        return {"type": "text", "text": text.strip()[:1500]}  # 限制 Word 長度
     elif file_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
         df = pd.read_excel(file)
-        return {"type": "text", "text": df.to_string(index=False)}
+        return {"type": "text", "text": df.to_string(index=False)[:1500]}  # 限制 Excel 長度
     return {"type": "unsupported"}
+
+# === 限制文字長度用函數 ===
+def truncate(text, max_len=1000):
+    return text if len(text) <= max_len else text[:max_len] + "..."
+
+# === 上傳檔案 ===
+uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
 
 # === 對話框輸入區 ===
 if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
     file_content = extract_file_content(uploaded_file) if uploaded_file else None
 
-    # 顯示使用者對話氣泡
     with st.chat_message("user"):
         st.markdown(prompt)
         if file_content and "preview" in file_content:
             st.image(file_content["preview"], caption="上傳圖片")
 
-    # === 建立 GPT messages 上下文 ===
+    # 建立 GPT messages 上下文
     messages = []
 
-    # 加入過去對話（最多最近 5 筆避免 token 超限）
-    for item in st.session_state.chat_history[-5:]:
-        messages.append({"role": "user", "content": item["提問"]})
-        messages.append({"role": "assistant", "content": item["回覆"]})
+    for item in st.session_state.chat_history[-2:]:  # 保留最近 2 輪對話
+        messages.append({"role": "user", "content": truncate(item["提問"])})
+        messages.append({"role": "assistant", "content": truncate(item["回覆"])})
 
-    # 加入當前提問與檔案
     if file_content and file_content["type"] == "image":
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": prompt},
+                {"type": "text", "text": truncate(prompt)},
                 {"type": "image_url", "image_url": {
                     "url": "data:image/png;base64," + base64.b64encode(file_content["bytes"]).decode()}}
             ]
         })
     elif file_content and file_content["type"] == "text":
-        messages.append({"role": "user", "content": f"{prompt}\n\n以下是檔案內容：\n{file_content['text']}"})
+        messages.append({"role": "user", "content": truncate(f"{prompt}\n\n以下是檔案內容：\n{file_content['text']}", 1500)})
     else:
-        messages.append({"role": "user", "content": prompt})
+        messages.append({"role": "user", "content": truncate(prompt)})
 
     # GPT 回應
-    with st.spinner("思考中..."):
-        completion = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=1500
-        )
-        reply = completion.choices[0].message.content
-
-    # 顯示 AI 對話氣泡
+    try:
+        with st.spinner("思考中..."):
+            completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=1500
+            )
+            reply = completion.choices[0].message.content
+    except Exception as e:
+        reply = f"❗ 發生錯誤：{str(e)}"
+    
     with st.chat_message("assistant"):
         st.markdown(reply)
 
-    # 存入聊天紀錄
     st.session_state.chat_history.append({"提問": prompt, "回覆": reply})
 
 # === 歷史下載工具 ===
