@@ -31,7 +31,7 @@ if "conversations" not in st.session_state:
 
     try:
         raw_json = load_result.get("compeq_chat") or None
-        st.sidebar.write("📦 localStorage：", raw_json)
+        st.sidebar.write("📦 localStorage：", repr(raw_json))
         st.session_state.conversations = json.loads(raw_json) if raw_json else {"預設對話": []}
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
