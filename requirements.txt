@@ -1,7 +1,8 @@
 streamlit
+streamlit-js-eval
 openai
 pillow
-pymupdf
-python-docx
 pandas
+python-docx
+PyMuPDF
 xlsxwriter
