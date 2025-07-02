@@ -24,23 +24,27 @@ load_result = streamlit_js_eval(
     key="load-local"
 )
 
+# 若 localStorage 沒資料，先暫停
 if load_result is None or "compeq_chat" not in load_result:
     st.info("⏳ 正在初始化 localStorage，請稍候...")
     st.stop()
 
+# 初始化對話內容
 if "conversations" not in st.session_state:
     try:
         raw_json = load_result.get("compeq_chat")
         st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
-        if raw_json and raw_json.strip():
-            st.session_state.conversations = json.loads(raw_json)
-        else:
+        # 安全處理空資料與錯誤格式
+        if not raw_json or raw_json.strip() in ("", "{}", "null"):
             st.session_state.conversations = {"預設對話": []}
+        else:
+            st.session_state.conversations = json.loads(raw_json)
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
+# === 設定 active_session ===
 session_names = list(st.session_state.conversations.keys())
 
 if "active_session" not in st.session_state or st.session_state.active_session not in session_names:
