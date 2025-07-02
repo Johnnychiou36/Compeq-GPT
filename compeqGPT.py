@@ -20,17 +20,16 @@ st.title("Compeq GPT（你的好助手）")
 
 # === 初始化對話資料 ===
 load_result = streamlit_js_eval(
-    js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
+    js_expressions="localStorage.getItem('compeq_chat')",
     key="load-local-read"
 )
 
-# 從回傳中取出 compeq_chat 內容
-if isinstance(load_result, dict) and "compeq_chat" in load_result:
-    raw_json = load_result["compeq_chat"]
+# 檢查結果是否為有效字串
+if isinstance(load_result, str) and load_result.strip() not in ("", "null", "undefined"):
+    raw_json = load_result
 else:
     raw_json = None
 
-# 顯示 localStorage 內容
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
 # 初始化對話記錄
