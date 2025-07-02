@@ -18,48 +18,38 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
-# === 儲存函數（修正：避免沒初始化就儲存）===
-def persist_to_local():
-    if "conversations" not in st.session_state:
-        return
-    import uuid
-    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
-    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
-
-# === 第一次載入請求 localStorage 內容 ===
-if "raw_json" not in st.session_state:
-    st.session_state.raw_json = streamlit_js_eval(
+# === 僅在初始化時載入 localStorage ===
+if "conversations" not in st.session_state:
+    raw_json = streamlit_js_eval(
         js_expressions="localStorage.getItem('compeq_chat')",
         key="load-local"
     )
-    st.stop()
-
-# === localStorage 有回傳內容後再初始化 conversations ===
-if "conversations" not in st.session_state:
-    raw_json = st.session_state.raw_json
     if isinstance(raw_json, str) and raw_json.strip() not in ("", "null", "undefined"):
         try:
             st.session_state.conversations = json.loads(raw_json)
         except:
             st.session_state.conversations = {"預設對話": []}
-            persist_to_local()
     else:
         st.session_state.conversations = {"預設對話": []}
-        persist_to_local()
 
 # === 保底 active_session ===
 if "active_session" not in st.session_state:
     session_keys = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_keys[0] if session_keys else "預設對話"
 
+# === 儲存函數 ===
+def persist_to_local():
+    import uuid
+    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
+    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
+
 # === 側邊欄 ===
 st.sidebar.header("💬 對話管理")
-session_names = list(st.session_state.conversations.keys())
 
-# 選擇對話（不立即 persist，避免覆蓋錯誤）
+session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
-if selected != st.session_state.active_session:
-    st.session_state.active_session = selected
+st.session_state.active_session = selected
+persist_to_local()
 
 with st.sidebar.expander("重新命名對話"):
     rename_input = st.text_input("輸入新名稱", key="rename_input")
@@ -170,3 +160,4 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json(merged), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word(merged), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel(session), file_name="chat_history.xlsx")
+    
