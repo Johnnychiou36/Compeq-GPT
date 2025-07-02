@@ -32,27 +32,31 @@ if load_result is None or "compeq_chat" not in load_result:
 # === 初始化對話資料 ===
 load_result = streamlit_js_eval(
     js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
-    key="load-local"
+    key="load-local"  # ✅ 用在讀 localStorage
 )
 
+# 嘗試從 localStorage 解析對話資料
 raw_json = load_result.get("compeq_chat") if load_result else None
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
-# 若是初次載入（localStorage 是空）
-if not raw_json or raw_json.strip() in ("", "null", "undefined"):
-    st.session_state.conversations = {"預設對話": []}
-    st.session_state.active_session = "預設對話"
-    streamlit_js_eval(
-        js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
-        key="init-local"  # ✅ 用不同 key 避免重複
-    )
-else:
+if "conversations" not in st.session_state:
     try:
-        st.session_state.conversations = json.loads(raw_json)
+        if not raw_json or raw_json.strip() in ("", "null", "undefined"):
+            st.session_state.conversations = {"預設對話": []}
+            st.session_state.active_session = "預設對話"
+
+            # ✅ 初始化存入 localStorage，要用不同 key
+            streamlit_js_eval(
+                js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
+                key="init-local"
+            )
+        else:
+            st.session_state.conversations = json.loads(raw_json)
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
-        st.warning(f"⚠️ localStorage 載入錯誤：{e}")
+        st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
+# 保底 active_session
 if "active_session" not in st.session_state:
     session_names = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
