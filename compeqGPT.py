@@ -21,16 +21,16 @@ st.title("Compeq GPT（你的好助手）")
 # === 初始化對話資料 ===
 load_result = streamlit_js_eval(
     js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
-    key="load-local-read"  # ✅ 避免 key 重複
+    key="load-local-read"
 )
 
-# 若 localStorage 沒資料，先暫停（初次開啟頁面可能會這樣）
-if load_result is None or "compeq_chat" not in load_result:
-    st.info("⏳ 正在初始化 localStorage，請稍候...")
-    st.stop()
+# 從回傳中取出 compeq_chat 內容
+if isinstance(load_result, dict) and "compeq_chat" in load_result:
+    raw_json = load_result["compeq_chat"]
+else:
+    raw_json = None
 
-# 嘗試從 localStorage 抓出 json 字串
-raw_json = load_result.get("compeq_chat")
+# 顯示 localStorage 內容
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
 # 初始化對話記錄
@@ -43,7 +43,7 @@ if "conversations" not in st.session_state:
 
             streamlit_js_eval(
                 js_expressions=f"""localStorage.setItem(\"compeq_chat\", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
-                key="init-local"  # ✅ 初始化時使用不同 key
+                key="init-local"
             )
         else:
             # 如果有資料就直接載入
