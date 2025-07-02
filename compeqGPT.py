@@ -36,16 +36,13 @@ st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 if "conversations" not in st.session_state:
     try:
         if not raw_json or raw_json.strip() in ("", "null", "undefined"):
-            # 如果是空值，就建立預設對話並寫入 localStorage
             st.session_state.conversations = {"預設對話": []}
             st.session_state.active_session = "預設對話"
-
             streamlit_js_eval(
                 js_expressions=f"""localStorage.setItem(\"compeq_chat\", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
                 key="init-local"
             )
         else:
-            # 如果有資料就直接載入
             st.session_state.conversations = json.loads(raw_json)
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
@@ -68,6 +65,7 @@ st.sidebar.header("💬 對話管理")
 
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
+persist_to_local()  # √ always-sync patch
 
 with st.sidebar.expander("重新命名對話"):
     rename_input = st.text_input("輸入新名稱", key="rename_input")
@@ -206,3 +204,4 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json_file(reply_all), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word_doc(reply_all), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel_file(session_data), file_name="chat_history.xlsx")
+
