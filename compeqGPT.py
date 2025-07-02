@@ -18,19 +18,17 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
-# === 取得 localStorage 初始資料 ===
-load_result = streamlit_js_eval(
-    js_expressions="localStorage.getItem('compeq_chat')",
-    key="load-local"
-)
-
 # === 初始化對話資料 ===
+load_result = streamlit_js_eval("localStorage.getItem('compeq_chat')", key="load-local")
+
 if "conversations" not in st.session_state:
     if load_result is None:
-        st.info("正在載入歷史對話，請稍候...")
+        st.info("⏳ 正在載入歷史對話，請稍候...")
         st.stop()
+
     try:
-        st.session_state.conversations = json.loads(load_result["compeq_chat"]) if load_result.get("compeq_chat") else {"預設對話": []}
+        raw_json = load_result.get("value") if load_result else None
+        st.session_state.conversations = json.loads(raw_json) if raw_json else {"預設對話": []}
     except:
         st.session_state.conversations = {"預設對話": []}
 
@@ -47,12 +45,10 @@ def persist_to_local():
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
 
-# 選擇對話
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
 
-# 重新命名對話
 with st.sidebar.expander("重新命名對話"):
     rename_input = st.text_input("輸入新名稱", key="rename_input")
     if st.button("✏️ 確認重新命名"):
@@ -62,7 +58,6 @@ with st.sidebar.expander("重新命名對話"):
             persist_to_local()
             st.rerun()
 
-# 新增對話
 with st.sidebar.expander("新增對話"):
     new_session_name = st.text_input("輸入對話名稱", key="new_session")
     if st.button("➕ 建立新對話"):
@@ -72,15 +67,13 @@ with st.sidebar.expander("新增對話"):
             persist_to_local()
             st.rerun()
 
-# 刪除對話
 if st.sidebar.button("🗑️ 刪除當前對話"):
-    if st.session_state.active_session in st.session_state.conversations:
-        del st.session_state.conversations[st.session_state.active_session]
-        if not st.session_state.conversations:
-            st.session_state.conversations = {"預設對話": []}
-        st.session_state.active_session = list(st.session_state.conversations.keys())[0]
-        persist_to_local()
-        st.rerun()
+    del st.session_state.conversations[st.session_state.active_session]
+    if not st.session_state.conversations:
+        st.session_state.conversations = {"預設對話": []}
+    st.session_state.active_session = list(st.session_state.conversations.keys())[0]
+    persist_to_local()
+    st.rerun()
 
 # === 檔案處理 ===
 def extract_file_content(file):
