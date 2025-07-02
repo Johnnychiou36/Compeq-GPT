@@ -26,21 +26,25 @@ def persist_to_local():
     js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
     streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
 
-# === 僅在初始化時載入 localStorage ===
+# === 僅在初始化時載入 localStorage（使用 st.stop() 等待 js 回傳）===
 if "conversations" not in st.session_state:
     raw_json = streamlit_js_eval(
         js_expressions="localStorage.getItem('compeq_chat')",
         key="load-local"
     )
+    st.stop()  # 中斷第一次執行，等下一輪 raw_json 才會有值
+
+# === 第二輪畫面：處理回傳資料，初始化 conversations ===
+if "conversations" not in st.session_state:
     if isinstance(raw_json, str) and raw_json.strip() not in ("", "null", "undefined"):
         try:
             st.session_state.conversations = json.loads(raw_json)
         except:
             st.session_state.conversations = {"預設對話": []}
-            persist_to_local()  # ⬅️ 只有錯誤時才覆蓋
+            persist_to_local()
     else:
         st.session_state.conversations = {"預設對話": []}
-        persist_to_local()  # ⬅️ 只有初始 localStorage 為空才儲存
+        persist_to_local()
 
 # === 保底 active_session ===
 if "active_session" not in st.session_state:
