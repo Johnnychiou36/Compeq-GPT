@@ -42,7 +42,7 @@ if "conversations" not in st.session_state:
             st.session_state.active_session = "預設對話"
 
             streamlit_js_eval(
-                js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
+                js_expressions=f"""localStorage.setItem(\"compeq_chat\", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
                 key="init-local"  # ✅ 初始化時使用不同 key
             )
         else:
@@ -52,9 +52,9 @@ if "conversations" not in st.session_state:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
-# 保底 active_session（避免選擇對話時錯誤）
+# 保底 active_session 與 session_names
+session_names = list(st.session_state.conversations.keys())
 if "active_session" not in st.session_state:
-    session_names = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
 
 # === 儲存函數 ===
@@ -200,7 +200,7 @@ def create_excel_file(history):
     output.seek(0)
     return output
 
-if st.sidebar.button("📥 下載當前聊天紀錄"):
+if st.sidebar.button("📅 下載當前聊天紀錄"):
     session_data = st.session_state.conversations[st.session_state.active_session]
     reply_all = "\n\n".join([f"你：{x['提問']}\nGPT：{x['回覆']}" for x in session_data])
     st.sidebar.download_button("TXT 檔", create_txt_file(reply_all), file_name="response.txt")
