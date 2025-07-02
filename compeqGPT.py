@@ -21,28 +21,14 @@ st.title("Compeq GPT（你的好助手）")
 # === 初始化對話資料 ===
 load_result = streamlit_js_eval(
     js_expressions="localStorage.getItem('compeq_chat')",
-    key="load-local-read"
+    key="load-local-read-1"
 )
 
-# 檢查結果是否為有效字串
-if isinstance(load_result, str) and load_result.strip() not in ("", "null", "undefined"):
-    raw_json = load_result
-else:
-    raw_json = None
-
-st.sidebar.write("📦 localStorage 值：", repr(raw_json))
-
-# === 初始化對話資料 ===
-load_result = streamlit_js_eval(
-    js_expressions="localStorage.getItem('compeq_chat')",
-    key="load-local-read"
-)
-
-# 嘗試讀取 localStorage
 raw_json = load_result if isinstance(load_result, str) and load_result.strip() not in ("", "null", "undefined") else None
+
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
-# 載入對話記錄
+# 載入對話紀錄
 if "conversations" not in st.session_state:
     try:
         if raw_json:
@@ -53,22 +39,22 @@ if "conversations" not in st.session_state:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
-# ✅ 一律更新 session_names
+# 一律更新 session_names
 session_names = list(st.session_state.conversations.keys())
 
-# ✅ 如果已有對話，預設用第一個；否則創建預設
+# 如果已有對話，預設用第一個；否則建立預設
 if "active_session" not in st.session_state:
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
 
-# ✅ 若 conversations 是空的，確保有一個預設對話存在
+# 如 conversations 是空的，確保有一個預設對話
 if not session_names:
     st.session_state.conversations = {"預設對話": []}
     st.session_state.active_session = "預設對話"
     session_names = ["預設對話"]
 
-# ✅ 初始化後立即儲存（可防止覆蓋）
+# 初始化後立即儲存，防止遮蓋
 streamlit_js_eval(
-    js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
+    js_expressions=f"localStorage.setItem('compeq_chat', JSON.stringify({json.dumps(st.session_state.conversations)}));",
     key="post-init-save"
 )
 
@@ -77,14 +63,14 @@ def persist_to_local():
     js_code = f"""
     localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));
     """
-    streamlit_js_eval(js_expressions=js_code, key="save-local")
+    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{st.session_state.active_session}")
 
-# === 側邊欄：對話管理 ===
+# === 側邊段：對話管理 ===
 st.sidebar.header("💬 對話管理")
 
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
-persist_to_local()  # √ always-sync patch
+persist_to_local()  # 每次切換對話都重新儲存
 
 with st.sidebar.expander("重新命名對話"):
     rename_input = st.text_input("輸入新名稱", key="rename_input")
@@ -138,11 +124,11 @@ def extract_file_content(file):
         return {"type": "text", "text": df.to_string(index=False)[:1500]}
     return {"type": "unsupported"}
 
-# 限制長度
+# === 限制長度 ===
 def truncate(text, max_len=1000):
     return text if len(text) <= max_len else text[:max_len] + "..."
 
-# 上傳檔案
+# === 上傳檔案 ===
 uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
 
 # === 對話輸入 ===
@@ -208,6 +194,7 @@ def create_word_doc(content):
     doc.save(buffer)
     buffer.seek(0)
     return buffer
+
 def create_excel_file(history):
     df = pd.DataFrame(history)
     output = BytesIO()
@@ -223,4 +210,3 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json_file(reply_all), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word_doc(reply_all), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel_file(session_data), file_name="chat_history.xlsx")
-
