@@ -8,44 +8,45 @@ from PIL import Image
 from io import BytesIO
 import streamlit as st
 from openai import OpenAI
-from streamlit_js_eval import streamlit_js_eval
 
 # === API 初始化 ===
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
+# === 資料檔案路徑 ===
+DATA_PATH = "chat_sessions.json"
+
+# === 檔案操作函數 ===
+def load_conversations_from_file():
+    if os.path.exists(DATA_PATH):
+        try:
+            with open(DATA_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"預設對話": []}
+
+def save_conversations_to_file():
+    with open(DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump(st.session_state.conversations, f, ensure_ascii=False, indent=2)
+
+def persist_to_local():
+    save_conversations_to_file()
+
 # === 頁面設定 ===
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
-# === 僅在初始化時載入 localStorage ===
+# === 初始化狀態 ===
 if "conversations" not in st.session_state:
-    raw_json = streamlit_js_eval(
-        js_expressions="localStorage.getItem('compeq_chat')",
-        key="load-local"
-    )
-    if isinstance(raw_json, str) and raw_json.strip() not in ("", "null", "undefined"):
-        try:
-            st.session_state.conversations = json.loads(raw_json)
-        except:
-            st.session_state.conversations = {"預設對話": []}
-    else:
-        st.session_state.conversations = {"預設對話": []}
+    st.session_state.conversations = load_conversations_from_file()
 
-# === 保底 active_session ===
 if "active_session" not in st.session_state:
     session_keys = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_keys[0] if session_keys else "預設對話"
 
-# === 儲存函數 ===
-def persist_to_local():
-    import uuid
-    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
-    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
-
 # === 側邊欄 ===
 st.sidebar.header("💬 對話管理")
-
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
@@ -77,7 +78,7 @@ if st.sidebar.button("🗑️ 刪除當前對話"):
     persist_to_local()
     st.rerun()
 
-# === 上傳檔案 ===
+# === 上傳檔案處理 ===
 def extract_file_content(file):
     file_type = file.type
     if file_type.startswith("image/"):
@@ -99,7 +100,7 @@ def extract_file_content(file):
 
 uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
 
-# === 提問輸入 ===
+# === 輸入提問處理 ===
 def truncate(t, max_len=1000): return t if len(t) <= max_len else t[:max_len] + "..."
 
 if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
@@ -137,12 +138,12 @@ if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
     st.session_state.conversations[st.session_state.active_session].append({"提問": prompt, "回覆": reply})
     persist_to_local()
 
-# === 顯示對話歷史 ===
+# === 顯示歷史對話 ===
 for item in st.session_state.conversations[st.session_state.active_session]:
     with st.chat_message("user"): st.markdown(item["提問"])
     with st.chat_message("assistant"): st.markdown(item["回覆"])
 
-# === 下載工具 ===
+# === 匯出聊天紀錄 ===
 def create_txt(content): return BytesIO(content.encode("utf-8"))
 def create_json(content): return BytesIO(json.dumps({"response": content}, ensure_ascii=False).encode("utf-8"))
 def create_word(content):
@@ -159,4 +160,6 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("TXT 檔", create_txt(merged), file_name="response.txt")
     st.sidebar.download_button("JSON 檔", create_json(merged), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word(merged), file_name="response.docx")
+    st.sidebar.download_button("Excel 檔", create_excel(session), file_name="chat_history.xlsx")
+
     st.sidebar.download_button("Excel 檔", create_excel(session), file_name="chat_history.xlsx")
