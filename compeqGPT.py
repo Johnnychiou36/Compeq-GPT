@@ -25,11 +25,11 @@ if "conversations" not in st.session_state:
     saved
     """
     result = streamlit_js_eval(js_expressions=js_code, key="load-local")
-    if result and result.get("value"):
-        st.session_state.conversations = json.loads(result["value"])
+    if result and result.get("compeq_chat"):
+        st.session_state.conversations = json.loads(result["compeq_chat"])
     else:
         st.session_state.conversations = {"預設對話": []}
-
+        
 if "active_session" not in st.session_state:
     st.session_state.active_session = list(st.session_state.conversations.keys())[0]
 
@@ -42,7 +42,6 @@ def persist_to_local():
 
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
-st.sidebar.write("🧪 LocalStorage 狀態：", streamlit_js_eval(js_expressions="localStorage.getItem('compeq_chat')", key="debug-check"))
 
 # 選擇對話
 session_names = list(st.session_state.conversations.keys())
