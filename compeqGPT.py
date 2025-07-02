@@ -26,8 +26,10 @@ if "raw_json" not in st.session_state:
     )
     st.stop()
 
-# ✅ 儲存函數定義，請務必在此之前不要呼叫它
+# ✅ 儲存函數（只有一份，放在初始化前）
 def persist_to_local():
+    if "conversations" not in st.session_state:
+        return
     import uuid
     js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
     streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
@@ -50,15 +52,8 @@ if "active_session" not in st.session_state:
     session_keys = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_keys[0] if session_keys else "預設對話"
 
-# === 儲存函數 ===
-def persist_to_local():
-    import uuid
-    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
-    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
-
 # === 側邊欄 ===
 st.sidebar.header("💬 對話管理")
-
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
@@ -173,4 +168,3 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json(merged), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word(merged), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel(session), file_name="chat_history.xlsx")
-    
