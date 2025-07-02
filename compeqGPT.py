@@ -19,7 +19,10 @@ st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
 # === 初始化對話資料 ===
-load_result = streamlit_js_eval("localStorage.getItem('compeq_chat')", key="load-local")
+load_result = streamlit_js_eval(
+    js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
+    key="load-local"
+)
 
 if "conversations" not in st.session_state:
     if load_result is None:
