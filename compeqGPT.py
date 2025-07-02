@@ -39,8 +39,9 @@ if "active_session" not in st.session_state:
 
 # === 儲存函數 ===
 def persist_to_local():
+    import uuid
     js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
-    streamlit_js_eval(js_expressions=js_code, key="save-local")
+    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
 
 # === 側邊欄 ===
 st.sidebar.header("💬 對話管理")
