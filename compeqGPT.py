@@ -29,25 +29,33 @@ if load_result is None or "compeq_chat" not in load_result:
     st.info("⏳ 正在初始化 localStorage，請稍候...")
     st.stop()
 
-# 初始化對話內容
-if "conversations" not in st.session_state:
-    try:
-        raw_json = load_result.get("compeq_chat")
-        st.sidebar.write("📦 localStorage 值：", repr(raw_json))
+# === 初始化對話資料 ===
+load_result = streamlit_js_eval(
+    js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
+    key="load-local"
+)
 
-        # 安全處理空資料與錯誤格式
-        if not raw_json or raw_json.strip() in ("", "{}", "null"):
-            st.session_state.conversations = {"預設對話": []}
-        else:
-            st.session_state.conversations = json.loads(raw_json)
+# 取得 localStorage 字串值
+raw_json = load_result.get("compeq_chat") if load_result else None
+st.sidebar.write("📦 localStorage 值：", repr(raw_json))  # ⬅️ 偵錯用，幫你觀察值
+
+# 若是初次進入（localStorage 是空）就初始化
+if not raw_json or raw_json.strip() in ("", "null", "undefined"):
+    st.session_state.conversations = {"預設對話": []}
+    st.session_state.active_session = "預設對話"
+    # 把這份初始化資料寫回 localStorage
+    js_code = f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));"""
+    streamlit_js_eval(js_expressions=js_code, key="init-local")
+else:
+    try:
+        st.session_state.conversations = json.loads(raw_json)
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
-        st.warning(f"⚠️ 對話資料載入失敗：{e}")
+        st.warning(f"⚠️ localStorage 載入錯誤：{e}")
 
-# === 設定 active_session ===
-session_names = list(st.session_state.conversations.keys())
-
-if "active_session" not in st.session_state or st.session_state.active_session not in session_names:
+# active_session 初始化
+if "active_session" not in st.session_state:
+    session_names = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
 
 # === 儲存函數 ===
