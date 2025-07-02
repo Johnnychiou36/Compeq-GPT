@@ -42,6 +42,7 @@ def persist_to_local():
 
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
+st.sidebar.write("🧪 LocalStorage 狀態：", streamlit_js_eval(js_expressions="localStorage.getItem('compeq_chat')", key="debug-check"))
 
 # 選擇對話
 session_names = list(st.session_state.conversations.keys())
