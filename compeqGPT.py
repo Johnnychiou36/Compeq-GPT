@@ -18,18 +18,22 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
+# === 取得 localStorage 初始資料 ===
+load_result = streamlit_js_eval(
+    js_expressions="localStorage.getItem('compeq_chat')",
+    key="load-local"
+)
+
 # === 初始化對話資料 ===
 if "conversations" not in st.session_state:
-    js_code = """
-    const saved = localStorage.getItem("compeq_chat");
-    saved
-    """
-    result = streamlit_js_eval(js_expressions=js_code, key="load-local")
-    if result and result.get("value"):
-        st.session_state.conversations = json.loads(result["value"])
-    else:
+    if load_result is None:
+        st.info("正在載入歷史對話，請稍候...")
+        st.stop()
+    try:
+        st.session_state.conversations = json.loads(load_result["compeq_chat"]) if load_result.get("compeq_chat") else {"預設對話": []}
+    except:
         st.session_state.conversations = {"預設對話": []}
-        
+
 if "active_session" not in st.session_state:
     st.session_state.active_session = list(st.session_state.conversations.keys())[0]
 
@@ -42,6 +46,11 @@ def persist_to_local():
 
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
+
+# 除錯工具（可移除）
+with st.sidebar.expander("🧪 LocalStorage 檢查"):
+    debug = streamlit_js_eval("localStorage.getItem('compeq_chat')", key="debug-local")
+    st.json(debug)
 
 # 選擇對話
 session_names = list(st.session_state.conversations.keys())
@@ -104,11 +113,11 @@ def extract_file_content(file):
         return {"type": "text", "text": df.to_string(index=False)[:1500]}
     return {"type": "unsupported"}
 
-# === 限制文字長度用函數 ===
+# 限制長度
 def truncate(text, max_len=1000):
     return text if len(text) <= max_len else text[:max_len] + "..."
 
-# === 上傳檔案 ===
+# 上傳檔案
 uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
 
 # === 對話輸入 ===
@@ -164,13 +173,8 @@ for item in st.session_state.conversations[st.session_state.active_session]:
         st.markdown(item["回覆"])
 
 # === 下載工具 ===
-def create_txt_file(content):
-    return BytesIO(content.encode("utf-8"))
-
-def create_json_file(content):
-    json_str = json.dumps({"response": content}, ensure_ascii=False)
-    return BytesIO(json_str.encode("utf-8"))
-
+def create_txt_file(content): return BytesIO(content.encode("utf-8"))
+def create_json_file(content): return BytesIO(json.dumps({"response": content}, ensure_ascii=False).encode("utf-8"))
 def create_word_doc(content):
     doc = docx.Document()
     doc.add_heading("GPT 回覆內容", level=1)
@@ -179,7 +183,6 @@ def create_word_doc(content):
     doc.save(buffer)
     buffer.seek(0)
     return buffer
-
 def create_excel_file(history):
     df = pd.DataFrame(history)
     output = BytesIO()
