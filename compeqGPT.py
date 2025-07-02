@@ -18,6 +18,14 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
+# === 儲存函數（修正：避免沒初始化就儲存）===
+def persist_to_local():
+    if "conversations" not in st.session_state:
+        return
+    import uuid
+    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
+    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
+
 # === 僅在初始化時載入 localStorage ===
 if "conversations" not in st.session_state:
     raw_json = streamlit_js_eval(
@@ -29,27 +37,24 @@ if "conversations" not in st.session_state:
             st.session_state.conversations = json.loads(raw_json)
         except:
             st.session_state.conversations = {"預設對話": []}
+            persist_to_local()  # ⬅️ 只有錯誤時才覆蓋
     else:
         st.session_state.conversations = {"預設對話": []}
+        persist_to_local()  # ⬅️ 只有初始 localStorage 為空才儲存
 
 # === 保底 active_session ===
 if "active_session" not in st.session_state:
     session_keys = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_keys[0] if session_keys else "預設對話"
 
-# === 儲存函數 ===
-def persist_to_local():
-    import uuid
-    js_code = f'localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));'
-    streamlit_js_eval(js_expressions=js_code, key=f"save-local-{uuid.uuid4()}")
-
 # === 側邊欄 ===
 st.sidebar.header("💬 對話管理")
-
 session_names = list(st.session_state.conversations.keys())
+
+# 選擇對話（不立即 persist，避免覆蓋錯誤）
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
-st.session_state.active_session = selected
-persist_to_local()
+if selected != st.session_state.active_session:
+    st.session_state.active_session = selected
 
 with st.sidebar.expander("重新命名對話"):
     rename_input = st.text_input("輸入新名稱", key="rename_input")
