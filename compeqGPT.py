@@ -18,19 +18,26 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
-# === 僅在初始化時載入 localStorage ===
-if "conversations" not in st.session_state:
-    raw_json = streamlit_js_eval(
+# === 第一次載入：非同步請求 localStorage 的 compeq_chat ===
+if "raw_json" not in st.session_state:
+    st.session_state.raw_json = streamlit_js_eval(
         js_expressions="localStorage.getItem('compeq_chat')",
         key="load-local"
     )
+    st.stop()  # 暫停，等待下一輪回傳
+
+# === 第二輪開始：已取得 raw_json，再初始化 conversations ===
+if "conversations" not in st.session_state:
+    raw_json = st.session_state.raw_json
     if isinstance(raw_json, str) and raw_json.strip() not in ("", "null", "undefined"):
         try:
             st.session_state.conversations = json.loads(raw_json)
         except:
             st.session_state.conversations = {"預設對話": []}
+            persist_to_local()
     else:
         st.session_state.conversations = {"預設對話": []}
+        persist_to_local()
 
 # === 保底 active_session ===
 if "active_session" not in st.session_state:
