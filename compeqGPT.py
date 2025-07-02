@@ -192,4 +192,3 @@ if st.sidebar.button("📥 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json_file(reply_all), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word_doc(reply_all), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel_file(session_data), file_name="chat_history.xlsx")
-
