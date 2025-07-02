@@ -18,6 +18,8 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
+st.write("調試—raw_json 值：", repr(st.session_state.raw_json))
+
 # === 第一次載入 localStorage（等待 JS 回傳）===
 if "raw_json" not in st.session_state:
     st.session_state.raw_json = streamlit_js_eval(
