@@ -47,11 +47,6 @@ def persist_to_local():
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
 
-# 除錯工具（可移除）
-with st.sidebar.expander("🧪 LocalStorage 檢查"):
-    debug = streamlit_js_eval("localStorage.getItem('compeq_chat')", key="debug-local")
-    st.json(debug)
-
 # 選擇對話
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
