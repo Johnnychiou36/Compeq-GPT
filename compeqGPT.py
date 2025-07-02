@@ -18,17 +18,7 @@ client = OpenAI(api_key=api_key)
 st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
 st.title("Compeq GPT（你的好助手）")
 
-st.write("調試—raw_json 值：", repr(st.session_state.raw_json))
-
-# === 第一次載入 localStorage（等待 JS 回傳）===
-if "raw_json" not in st.session_state:
-    st.session_state.raw_json = streamlit_js_eval(
-        js_expressions="localStorage.getItem('compeq_chat')",
-        key="load-local"
-    )
-    st.stop()
-
-# ✅ 儲存函數（只有一份，放在初始化前）
+# === 儲存函數：將資料寫入 localStorage ===
 def persist_to_local():
     if "conversations" not in st.session_state:
         return
@@ -38,16 +28,9 @@ def persist_to_local():
 
 # === 初始化 conversations ===
 if "conversations" not in st.session_state:
-    raw_json = st.session_state.raw_json
-    if isinstance(raw_json, str) and raw_json.strip() not in ("", "null", "undefined"):
-        try:
-            st.session_state.conversations = json.loads(raw_json)
-        except:
-            st.session_state.conversations = {"預設對話": []}
-            persist_to_local()
-    else:
-        st.session_state.conversations = {"預設對話": []}
-        persist_to_local()
+    st.session_state.conversations = {"預設對話": []}
+    st.session_state.active_session = "預設對話"
+    persist_to_local()
 
 # === 保底 active_session ===
 if "active_session" not in st.session_state:
@@ -55,7 +38,7 @@ if "active_session" not in st.session_state:
     st.session_state.active_session = session_keys[0] if session_keys else "預設對話"
 
 # === 側邊欄 ===
-st.sidebar.header("💬 對話管理")
+st.sidebar.header("\U0001F4AC 對話管理")
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
@@ -170,3 +153,4 @@ if st.sidebar.button("📅 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json(merged), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word(merged), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel(session), file_name="chat_history.xlsx")
+
