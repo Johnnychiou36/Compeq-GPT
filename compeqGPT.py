@@ -25,8 +25,8 @@ if "conversations" not in st.session_state:
     saved
     """
     result = streamlit_js_eval(js_expressions=js_code, key="load-local")
-    if result and result.get("compeq_chat"):
-        st.session_state.conversations = json.loads(result["compeq_chat"])
+    if result and result.get("value"):
+        st.session_state.conversations = json.loads(result["value"])
     else:
         st.session_state.conversations = {"預設對話": []}
         
