@@ -21,42 +21,38 @@ st.title("Compeq GPT（你的好助手）")
 # === 初始化對話資料 ===
 load_result = streamlit_js_eval(
     js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
-    key="load-local"
+    key="load-local-read"  # ✅ 避免 key 重複
 )
 
-# 若 localStorage 沒資料，先暫停
+# 若 localStorage 沒資料，先暫停（初次開啟頁面可能會這樣）
 if load_result is None or "compeq_chat" not in load_result:
     st.info("⏳ 正在初始化 localStorage，請稍候...")
     st.stop()
 
-# === 初始化對話資料 ===
-load_result = streamlit_js_eval(
-    js_expressions={"compeq_chat": "localStorage.getItem('compeq_chat')"},
-    key="load-local"  # ✅ 用在讀 localStorage
-)
-
-# 嘗試從 localStorage 解析對話資料
-raw_json = load_result.get("compeq_chat") if load_result else None
+# 嘗試從 localStorage 抓出 json 字串
+raw_json = load_result.get("compeq_chat")
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
+# 初始化對話記錄
 if "conversations" not in st.session_state:
     try:
         if not raw_json or raw_json.strip() in ("", "null", "undefined"):
+            # 如果是空值，就建立預設對話並寫入 localStorage
             st.session_state.conversations = {"預設對話": []}
             st.session_state.active_session = "預設對話"
 
-            # ✅ 初始化存入 localStorage，要用不同 key
             streamlit_js_eval(
                 js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
-                key="init-local"
+                key="init-local"  # ✅ 初始化時使用不同 key
             )
         else:
+            # 如果有資料就直接載入
             st.session_state.conversations = json.loads(raw_json)
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
-# 保底 active_session
+# 保底 active_session（避免選擇對話時錯誤）
 if "active_session" not in st.session_state:
     session_names = list(st.session_state.conversations.keys())
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
