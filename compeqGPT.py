@@ -30,13 +30,11 @@ if "conversations" not in st.session_state:
         st.stop()
 
     try:
-        raw_json = load_result.get("value") if load_result else None
+        raw_json = load_result.get("compeq_chat")  # ✅ 修正關鍵
         st.session_state.conversations = json.loads(raw_json) if raw_json else {"預設對話": []}
-    except:
+    except Exception as e:
         st.session_state.conversations = {"預設對話": []}
-
-if "active_session" not in st.session_state:
-    st.session_state.active_session = list(st.session_state.conversations.keys())[0]
+        st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
 # === 儲存函數 ===
 def persist_to_local():
