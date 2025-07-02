@@ -30,11 +30,16 @@ if "conversations" not in st.session_state:
         st.stop()
 
     try:
-        raw_json = load_result.get("compeq_chat")  # ✅ 修正關鍵
+        raw_json = load_result.get("compeq_chat")  # ✅ 修正這裡的 key
         st.session_state.conversations = json.loads(raw_json) if raw_json else {"預設對話": []}
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
+
+session_names = list(st.session_state.conversations.keys())
+
+if "active_session" not in st.session_state or st.session_state.active_session not in session_names:
+    st.session_state.active_session = session_names[0] if session_names else "預設對話"
 
 # === 儲存函數 ===
 def persist_to_local():
@@ -46,7 +51,6 @@ def persist_to_local():
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
 
-session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
 
@@ -187,3 +191,4 @@ if st.sidebar.button("📥 下載當前聊天紀錄"):
     st.sidebar.download_button("JSON 檔", create_json_file(reply_all), file_name="response.json")
     st.sidebar.download_button("Word 檔", create_word_doc(reply_all), file_name="response.docx")
     st.sidebar.download_button("Excel 檔", create_excel_file(session_data), file_name="chat_history.xlsx")
+
