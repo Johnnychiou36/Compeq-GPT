@@ -32,28 +32,45 @@ else:
 
 st.sidebar.write("📦 localStorage 值：", repr(raw_json))
 
-# 初始化對話記錄
+# === 初始化對話資料 ===
+load_result = streamlit_js_eval(
+    js_expressions="localStorage.getItem('compeq_chat')",
+    key="load-local-read"
+)
+
+# 嘗試讀取 localStorage
+raw_json = load_result if isinstance(load_result, str) and load_result.strip() not in ("", "null", "undefined") else None
+st.sidebar.write("📦 localStorage 值：", repr(raw_json))
+
+# 載入對話記錄
 if "conversations" not in st.session_state:
     try:
-        if not raw_json or raw_json.strip() in ("", "null", "undefined"):
-            st.session_state.conversations = {"預設對話": []}
-            st.session_state.active_session = "預設對話"
-            streamlit_js_eval(
-                js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
-                key="init-local"
-            )
-        else:
+        if raw_json:
             st.session_state.conversations = json.loads(raw_json)
+        else:
+            st.session_state.conversations = {"預設對話": []}
     except Exception as e:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
-# ✅ 一律更新 session_names（不管是否首次）
+# ✅ 一律更新 session_names
 session_names = list(st.session_state.conversations.keys())
 
-# 保底 active_session
+# ✅ 如果已有對話，預設用第一個；否則創建預設
 if "active_session" not in st.session_state:
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
+
+# ✅ 若 conversations 是空的，確保有一個預設對話存在
+if not session_names:
+    st.session_state.conversations = {"預設對話": []}
+    st.session_state.active_session = "預設對話"
+    session_names = ["預設對話"]
+
+# ✅ 初始化後立即儲存（可防止覆蓋）
+streamlit_js_eval(
+    js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
+    key="post-init-save"
+)
 
 # === 儲存函數 ===
 def persist_to_local():
