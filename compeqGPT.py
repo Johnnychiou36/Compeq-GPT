@@ -1,4 +1,3 @@
-import os
 import json
 import fitz
 import docx
@@ -8,19 +7,25 @@ from PIL import Image
 from io import BytesIO
 import streamlit as st
 from openai import OpenAI
+from streamlit_js_eval import streamlit_js_eval
 
 # === API 初始化 ===
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
-# === 初始化檔案路徑 ===
-SESSIONS_FILE = "chat_sessions.json"
+# === 頁面設定 ===
+st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
+st.title("Compeq GPT（你的好助手）")
 
 # === 初始化對話資料 ===
 if "conversations" not in st.session_state:
-    if os.path.exists(SESSIONS_FILE):
-        with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
-            st.session_state.conversations = json.load(f)
+    js_code = """
+    const saved = localStorage.getItem("compeq_chat");
+    saved
+    """
+    result = streamlit_js_eval(js_expressions=js_code, key="load-local")
+    if result and result.get("compeq_chat"):
+        st.session_state.conversations = json.loads(result["compeq_chat"])
     else:
         st.session_state.conversations = {"預設對話": []}
 
@@ -28,13 +33,11 @@ if "active_session" not in st.session_state:
     st.session_state.active_session = list(st.session_state.conversations.keys())[0]
 
 # === 儲存函數 ===
-def save_sessions():
-    with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.conversations, f, ensure_ascii=False, indent=2)
-
-# === 頁面設定 ===
-st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
-st.title("Compeq GPT（你的好助手）")
+def persist_to_local():
+    js_code = f"""
+    localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));
+    """
+    streamlit_js_eval(js_expressions=js_code, key="save-local")
 
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
@@ -51,7 +54,7 @@ with st.sidebar.expander("重新命名對話"):
         if rename_input and rename_input not in st.session_state.conversations:
             st.session_state.conversations[rename_input] = st.session_state.conversations.pop(st.session_state.active_session)
             st.session_state.active_session = rename_input
-            save_sessions()
+            persist_to_local()
             st.rerun()
 
 # 新增對話
@@ -61,7 +64,7 @@ with st.sidebar.expander("新增對話"):
         if new_session_name and new_session_name not in st.session_state.conversations:
             st.session_state.conversations[new_session_name] = []
             st.session_state.active_session = new_session_name
-            save_sessions()
+            persist_to_local()
             st.rerun()
 
 # 刪除對話
@@ -71,7 +74,7 @@ if st.sidebar.button("🗑️ 刪除當前對話"):
         if not st.session_state.conversations:
             st.session_state.conversations = {"預設對話": []}
         st.session_state.active_session = list(st.session_state.conversations.keys())[0]
-        save_sessions()
+        persist_to_local()
         st.rerun()
 
 # === 檔案處理 ===
@@ -150,7 +153,7 @@ if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
         st.markdown(reply)
 
     st.session_state.conversations[st.session_state.active_session].append({"提問": prompt, "回覆": reply})
-    save_sessions()
+    persist_to_local()
 
 # === 顯示歷史紀錄 ===
 for item in st.session_state.conversations[st.session_state.active_session]:
