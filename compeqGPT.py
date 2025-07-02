@@ -39,7 +39,7 @@ if "conversations" not in st.session_state:
             st.session_state.conversations = {"預設對話": []}
             st.session_state.active_session = "預設對話"
             streamlit_js_eval(
-                js_expressions=f"""localStorage.setItem(\"compeq_chat\", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
+                js_expressions=f"""localStorage.setItem("compeq_chat", JSON.stringify({json.dumps(st.session_state.conversations)}));""",
                 key="init-local"
             )
         else:
@@ -48,8 +48,10 @@ if "conversations" not in st.session_state:
         st.session_state.conversations = {"預設對話": []}
         st.warning(f"⚠️ 對話資料載入失敗：{e}")
 
-# 保底 active_session 與 session_names
+# ✅ 一律更新 session_names（不管是否首次）
 session_names = list(st.session_state.conversations.keys())
+
+# 保底 active_session
 if "active_session" not in st.session_state:
     st.session_state.active_session = session_names[0] if session_names else "預設對話"
 
