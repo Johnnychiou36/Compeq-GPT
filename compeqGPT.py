@@ -9,12 +9,35 @@ from io import BytesIO
 import streamlit as st
 from openai import OpenAI
 
-# === API 初始化 ===
+# === 頁面設定 ===
+st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
+st.title("Compeq GPT（你的好助手）")
+
+# === 使用者登入（必要） ===
+if "user_id" not in st.session_state:
+    with st.sidebar:
+        st.header("👤 請輸入使用者名稱")
+        username = st.text_input("使用者名稱", key="username_input")
+        if st.button("登入"):
+            if username.strip():
+                st.session_state.user_id = username.strip()
+                st.rerun()
+    st.stop()
+else:
+    username = st.session_state.user_id
+    st.sidebar.markdown(f"✅ 目前使用者：`{username}`")
+    if st.sidebar.button("🔁 切換使用者"):
+        for key in ["user_id", "conversations", "active_session"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
+
+# === 使用者專屬檔案 ===
+SESSIONS_FILE = f"chat_sessions_{username}.json"
+
+# === 初始化 API ===
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
-
-# === 初始化檔案路徑 ===
-SESSIONS_FILE = "chat_sessions.json"
 
 # === 初始化對話資料 ===
 if "conversations" not in st.session_state:
@@ -27,19 +50,14 @@ if "conversations" not in st.session_state:
 if "active_session" not in st.session_state:
     st.session_state.active_session = list(st.session_state.conversations.keys())[0]
 
-# === 儲存函數 ===
+# === 儲存對話 ===
 def save_sessions():
     with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(st.session_state.conversations, f, ensure_ascii=False, indent=2)
 
-# === 頁面設定 ===
-st.set_page_config(page_title="Compeq GPT Chat", layout="wide")
-st.title("Compeq GPT（你的好助手）")
-
 # === 側邊欄：對話管理 ===
 st.sidebar.header("💬 對話管理")
 
-# 選擇對話
 session_names = list(st.session_state.conversations.keys())
 selected = st.sidebar.selectbox("選擇對話", session_names, index=session_names.index(st.session_state.active_session))
 st.session_state.active_session = selected
@@ -100,14 +118,13 @@ def extract_file_content(file):
         return {"type": "text", "text": df.to_string(index=False)[:1500]}
     return {"type": "unsupported"}
 
-# === 限制文字長度用函數 ===
 def truncate(text, max_len=1000):
     return text if len(text) <= max_len else text[:max_len] + "..."
 
 # === 上傳檔案 ===
 uploaded_file = st.file_uploader("上傳圖片 / PDF / Word / TXT / Excel", type=["png", "jpg", "jpeg", "pdf", "txt", "docx", "xlsx"])
 
-# === 對話輸入 ===
+# === 對話輸入與回覆 ===
 if prompt := st.chat_input("輸入問題，並按 Enter 發送..."):
     file_content = extract_file_content(uploaded_file) if uploaded_file else None
 
